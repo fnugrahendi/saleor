@@ -1,39 +1,33 @@
-from unittest import TestCase
+from mock import Mock
+import pytest
 
-from django.template.response import TemplateResponse
-from mock import MagicMock
-from satchless.process import InvalidData
-
-from .utils import BaseStep
+from . import get_country_by_ip, get_currency_for_country, Country
 
 
-class SimpleStep(BaseStep):
+@pytest.mark.parametrize('reader, expected_country', [
+    (Mock(return_value=Mock(get=Mock(return_value={
+        'country': {'iso_code': 'PL'}}))), Country('PL')),
+    (Mock(return_value=Mock(get=Mock(return_value={
+        'country': {'iso_code': 'UNKNOWN'}}))), None),
+    (Mock(return_value=Mock(get=Mock(return_value=None))), None),
+    (Mock(return_value=Mock(get=Mock(return_value={}))), None),
+    (Mock(return_value=Mock(get=Mock(return_value={'country': {}}))), None),
+])
+def test_get_country_by_ip(reader, expected_country, monkeypatch):
+    monkeypatch.setattr('saleor.core.geolite2.reader', reader)
+    country = get_country_by_ip('127.0.0.1')
+    assert country == expected_country
 
-    def __str__(self):
-        return 'simple'
 
-    def save(self):
-        pass
-
-    def validate(self):
-        raise InvalidData()
-
-    def get_absolute_url(self):
-        return '/'
-
-
-class SimpleStepTest(TestCase):
-
-    def test_forms_are_valid(self):
-        request = MagicMock()
-        request.method = 'GET'
-        step = SimpleStep(request)
-        self.assert_(step.forms_are_valid())
-
-    def test_process(self):
-        request = MagicMock()
-        request.method = 'GET'
-        step = SimpleStep(request)
-        self.assertEqual(type(step.process()), TemplateResponse)
-        request.method = 'POST'
-        self.assertEqual(step.process(), None)
+@pytest.mark.parametrize('settings, country, expected_currency', [
+    (Mock(AVAILABLE_CURRENCIES=['GBP', 'PLN'], DEFAULT_CURRENCY='PLN'),
+     Country('PL'), 'PLN'),
+    (Mock(AVAILABLE_CURRENCIES=['GBP', 'PLN'], DEFAULT_CURRENCY='PLN'),
+     Country('USA'), 'PLN'),
+    (Mock(AVAILABLE_CURRENCIES=['GBP', 'PLN'], DEFAULT_CURRENCY='PLN'),
+     Country('GB'), 'GBP')
+])
+def test_get_currency_for_country(settings, country, expected_currency, monkeypatch):
+    monkeypatch.setattr('saleor.core.settings', settings)
+    currency = get_currency_for_country(country)
+    assert currency == expected_currency

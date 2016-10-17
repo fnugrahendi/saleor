@@ -4,12 +4,13 @@ Saleor
 Avast ye landlubbers! Saleor be a Satchless store ye can fork.
 
 [![Build Status](https://travis-ci.org/mirumee/saleor.png?branch=master)](https://travis-ci.org/mirumee/saleor)
+[![Requirements Status](https://requires.io/github/mirumee/saleor/requirements.svg?branch=master)](https://requires.io/github/mirumee/saleor/requirements/?branch=master)
 
 
 Usage
 -----
 
-See the [Saleor wiki](https://github.com/mirumee/saleor/wiki) for installation and deployment instructions.
+See the [Saleor docs](https://saleor.readthedocs.io) for installation and deployment instructions.
 
 
 Demo
@@ -29,6 +30,6 @@ Disclaimer: everything you see here is open and free to use as long as you compl
 
 Some situations however call for extra code being written. Whether you need us to cover an exotic use case or build you a custom e-commerce appliance, our team can help.
 
-> Mirumee Software  
-> http://mirumee.com/  
+> Mirumee Software
+> http://mirumee.com/
 > hello@mirumee.com

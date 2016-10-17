@@ -19,10 +19,12 @@ from django.utils.translation import ugettext_lazy as _
 from . import forms
 from .models import EmailConfirmationRequest, EmailChangeRequest
 from . import utils
+from ..cart.decorators import assign_anonymous_cart
 
 now = timezone.now
 
 
+@assign_anonymous_cart
 def login(request):
     local_host = utils.get_local_host(request)
     ctx = {
@@ -52,7 +54,7 @@ def oauth_callback(request, service):
             messages.success(request, _('You are now logged in.'))
             return redirect(settings.LOGIN_REDIRECT_URL)
     else:
-        for _field, errors in form.errors.items():
+        for dummy_field, errors in form.errors.items():
             for error in errors:
                 messages.error(request, error)
     return redirect('registration:login')
@@ -100,6 +102,8 @@ def confirm_email(request, token):
         except EmailConfirmationRequest.DoesNotExist:
             return TemplateResponse(request, 'registration/invalid_token.html')
         user = email_confirmation_request.get_authenticated_user()
+        if user is None:
+            return TemplateResponse(request, 'registration/invalid_token.html')
         email_confirmation_request.delete()
         auth_login(request, user)
         messages.success(request, _('You are now logged in.'))
@@ -119,7 +123,7 @@ def change_email(request, token):
     try:
         email_change_request = EmailChangeRequest.objects.get(
             token=token, valid_until__gte=now())
-            # TODO: cronjob (celery task) to delete stale tokens
+        # TODO: cronjob (celery task) to delete stale tokens
     except EmailChangeRequest.DoesNotExist:
         return TemplateResponse(request, 'registration/invalid_token.html')
 

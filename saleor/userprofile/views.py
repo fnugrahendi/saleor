@@ -18,8 +18,7 @@ def details(request):
 
 @login_required
 def orders(request):
-
-    ctx = {'orders': request.user.orders.prefetch_related('groups')}
+    ctx = {'orders': request.user.orders.prefetch_related('groups__items')}
     return TemplateResponse(request, 'userprofile/orders.html', ctx)
 
 
@@ -40,7 +39,8 @@ def address_edit(request, pk):
 @login_required
 def address_create(request):
     user = request.user
-    address_form = AddressForm(request.POST or None)
+    address_form = AddressForm(
+        request.POST or None, initial={'country': request.country})
     if address_form.is_valid():
         address = address_form.save()
         user.addresses.add(address)

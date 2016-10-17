@@ -9,9 +9,9 @@ from django.utils.translation import ugettext as _
 from django.template.response import TemplateResponse
 from payments import RedirectNeeded
 
-from . import check_order_status, get_ip
 from .forms import PaymentDeleteForm, PaymentMethodsForm
 from .models import Order, Payment
+from .utils import check_order_status, get_ip
 
 logger = logging.getLogger(__name__)
 
@@ -75,18 +75,17 @@ def start_payment(request, order, variant):
                 'billing_postcode': billing.postal_code,
                 'billing_country_code': billing.country,
                 'billing_email': order.get_user_email(),
-                'description': _('Order %(order_number)s' % {
-                    'order_number': order}),
+                'description': _('Order %(order_number)s') % {
+                    'order_number': order},
                 'billing_country_area': billing.country_area,
                 'customer_ip_address': get_ip(request)}
-    if not variant in [v for v, n in settings.CHECKOUT_PAYMENT_CHOICES]:
+    variant_choices = settings.CHECKOUT_PAYMENT_CHOICES
+    if variant not in [code for code, dummy_name in variant_choices]:
         raise Http404('%r is not a valid payment variant' % (variant,))
     with transaction.atomic():
         order.change_status('payment-pending')
-        payment, _created = Payment.objects.get_or_create(variant=variant,
-                                                          status='waiting',
-                                                          order=order,
-                                                          defaults=defaults)
+        payment, dummy_created = Payment.objects.get_or_create(
+            variant=variant, status='waiting', order=order, defaults=defaults)
         try:
             form = payment.get_form(data=request.POST or None)
         except RedirectNeeded as redirect_to:

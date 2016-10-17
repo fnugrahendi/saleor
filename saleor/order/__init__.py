@@ -1,46 +1,16 @@
-import logging
-
-from payments.signals import status_changed
-from django.dispatch import receiver
-from django.shortcuts import get_object_or_404, redirect
-from functools import wraps
-
-from .models import Order
-from ..core import analytics
+from django.utils.translation import pgettext_lazy
 
 
-logger = logging.getLogger(__name__)
+class Status(object):
+    NEW = 'new'
+    CANCELLED = 'cancelled'
+    SHIPPED = 'shipped'
+    PAYMENT_PENDING = 'payment-pending'
+    FULLY_PAID = 'fully-paid'
 
-def check_order_status(func):
-    @wraps(func)
-    def decorator(*args, **kwargs):
-        token = kwargs.pop('token')
-        order = get_object_or_404(Order, token=token)
-        if order.is_fully_paid():
-            return redirect('order:details', token=order.token)
-        kwargs['order'] = order
-        return func(*args, **kwargs)
-
-    return decorator
-
-
-@receiver(status_changed)
-def order_status_change(sender, instance, **kwargs):
-    order = instance.order
-    if order.is_fully_paid():
-        order.change_status('fully-paid')
-        instance.send_confirmation_email()
-        try:
-            analytics.report_order(order.tracking_client_id, order)
-        except Exception:
-            # Analytics failing should not abort the checkout flow
-            logger.exception('Recording order in analytics failed')
-
-
-def get_ip(request):
-    ip = request.META.get("HTTP_X_FORWARDED_FOR", None)
-    if ip:
-        ip = ip.split(", ")[0]
-    else:
-        ip = request.META.get("REMOTE_ADDR", "")
-    return ip
+    CHOICES = [
+        (NEW, pgettext_lazy('order status', 'Processing')),
+        (CANCELLED, pgettext_lazy('order status', 'Cancelled')),
+        (SHIPPED, pgettext_lazy('order status', 'Shipped')),
+        (PAYMENT_PENDING, pgettext_lazy('order status', 'Payment pending')),
+        (FULLY_PAID, pgettext_lazy('order status', 'Fully paid'))]

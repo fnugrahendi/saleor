@@ -1,15 +1,26 @@
 db:
-  image: sameersbn/postgresql:9.4
+  image: postgres
   environment:
-    - DB_NAME=saleor
-    - DB_USER=saleor
-    - DB_PASS=saleor
+    - POSTGRES_USER=saleor
+    - POSTGRES_PASSWORD=saleor
+  ports:
+    - '5432:5432'
+redis:
+  image: redis
+  ports:
+    - '6379:6379'
 web:
   build: .
+  command: python manage.py runserver 0.0.0.0:8000
+  environment:
+    - DATABASE_URL=postgres://saleor:saleor@db/saleor
+    - DEFAULT_FROM_EMAIL=noreply@example.com
+    - REDIS_URL=redis://redis:6379/0
+    - SECRET_KEY=changeme
   links:
     - db
+    - redis
   ports:
     - '8000:8000'
   volumes:
-    - .:/app
-  command: /app/compose/start.sh
+    - .:/app:Z

@@ -1,17 +1,18 @@
 from __future__ import unicode_literals
 
 from django.contrib import messages
+from django.core.urlresolvers import reverse
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.utils.http import is_safe_url
 from django.utils.translation import ugettext_lazy as _
 from django.views.decorators.http import require_http_methods
 
-from ...product.models import Product, ProductImage, Stock, ProductAttribute, \
-    ProductVariant
-from ..utils import paginate
-from ..views import staff_member_required
 from . import forms
+from ...core.utils import get_paginator_items
+from ...product.models import (Product, ProductAttribute, ProductImage,
+                               ProductVariant, Stock)
+from ..views import staff_member_required
 
 
 @staff_member_required
@@ -20,8 +21,8 @@ def product_list(request):
     form = forms.ProductClassForm(request.POST or None)
     if form.is_valid():
         return redirect('dashboard:product-add')
-    products, paginator = paginate(products, 30, request.GET.get('page'))
-    ctx = {'form': form, 'products': products, 'paginator': paginator}
+    products = get_paginator_items(products, 30, request.GET.get('page'))
+    ctx = {'form': form, 'products': products}
     return TemplateResponse(request, 'dashboard/product/list.html', ctx)
 
 
@@ -35,18 +36,20 @@ def product_create(request):
         messages.success(request, msg)
         return redirect('dashboard:variant-add', product_pk=product.pk)
     ctx = {'product_form': form, 'product': product}
-    return TemplateResponse(request, 'dashboard/product/product_form.html', ctx)
+    return TemplateResponse(
+        request, 'dashboard/product/product_form.html', ctx)
 
 
 @staff_member_required
 def product_edit(request, pk):
     product = get_object_or_404(
-        Product.objects.select_subclasses().prefetch_related('images',
-                                                             'variants'), pk=pk)
+        Product.objects.select_subclasses().prefetch_related(
+            'images', 'variants'), pk=pk)
     attributes = product.attributes.prefetch_related('values')
     images = product.images.all()
     variants = product.variants.select_subclasses()
-    stock_items = Stock.objects.filter(variant__in=variants)
+    stock_items = Stock.objects.filter(
+        variant__in=variants).select_related('variant')
 
     form = forms.ProductForm(request.POST or None, instance=product)
     variants_delete_form = forms.VariantBulkDeleteForm()
@@ -61,7 +64,8 @@ def product_edit(request, pk):
            'product': product, 'stock_delete_form': stock_delete_form,
            'stock_items': stock_items, 'variants': variants,
            'variants_delete_form': variants_delete_form}
-    return TemplateResponse(request, 'dashboard/product/product_form.html', ctx)
+    return TemplateResponse(
+        request, 'dashboard/product/product_form.html', ctx)
 
 
 @staff_member_required
@@ -88,7 +92,9 @@ def stock_edit(request, product_pk, stock_pk=None):
     if form.is_valid():
         form.save()
         messages.success(request, _('Saved stock'))
-        success_url = request.POST['success_url']
+        product_url = reverse(
+            'dashboard:product-update', kwargs={'pk': product_pk})
+        success_url = request.POST.get('success_url', product_url)
         if is_safe_url(success_url, request.get_host()):
             return redirect(success_url)
     ctx = {'form': form, 'product': product, 'stock': stock}
@@ -192,7 +198,8 @@ def variant_edit(request, product_pk, variant_pk=None):
             return redirect(success_url)
     ctx = {'attribute_form': attribute_form, 'form': form, 'product': product,
            'variant': variant}
-    return TemplateResponse(request, 'dashboard/product/variant_form.html', ctx)
+    return TemplateResponse(
+        request, 'dashboard/product/variant_form.html', ctx)
 
 
 @staff_member_required
@@ -261,7 +268,8 @@ def attribute_delete(request, pk):
     attribute = get_object_or_404(ProductAttribute, pk=pk)
     if request.method == 'POST':
         attribute.delete()
-        messages.success(request, _('Deleted attribute %s' % attribute.display))
+        messages.success(
+            request, _('Deleted attribute %s') % (attribute.display,))
         return redirect('dashboard:product-attributes')
     ctx = {'attribute': attribute}
     return TemplateResponse(
