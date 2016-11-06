@@ -2,9 +2,11 @@ import logging
 
 from django.conf import settings
 from django.utils.translation import get_language
+from django_countries.fields import Country
 
-from . import analytics, get_country_by_ip, get_currency_for_country
+from . import analytics
 from ..discount.models import Sale
+from .utils import get_client_ip, get_country_by_ip, get_currency_for_country
 
 logger = logging.getLogger(__name__)
 
@@ -33,10 +35,11 @@ class DiscountMiddleware(object):
 class CountryMiddleware(object):
 
     def process_request(self, request):
-        if 'REMOTE_ADDR' in request.META:
-            request.country = get_country_by_ip(request.META['REMOTE_ADDR'])
-        else:
-            request.country = None
+        client_ip = get_client_ip(request)
+        if client_ip:
+            request.country = get_country_by_ip(client_ip)
+        if not request.country:
+            request.country = Country(settings.DEFAULT_COUNTRY)
 
 
 class CurrencyMiddleware(object):

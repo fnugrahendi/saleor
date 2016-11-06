@@ -157,6 +157,7 @@ INSTALLED_APPS = [
     'babeldjango',
     'bootstrap3',
     'django_prices',
+    'django_prices_openexchangerates',
     'emailit',
     'mptt',
     'payments',
@@ -172,7 +173,7 @@ LOGGING = {
     'formatters': {
         'verbose': {
             'format': '%(levelname)s %(asctime)s %(module)s '
-            '%(process)d %(thread)d %(message)s'
+                      '%(process)d %(thread)d %(message)s'
         },
         'simple': {
             'format': '%(levelname)s %(message)s'
@@ -223,9 +224,12 @@ AUTH_USER_MODEL = 'userprofile.User'
 
 LOGIN_URL = '/account/login'
 
+DEFAULT_COUNTRY = 'US'
 DEFAULT_CURRENCY = 'USD'
 AVAILABLE_CURRENCIES = [DEFAULT_CURRENCY]
 DEFAULT_WEIGHT = 'lb'
+
+OPENEXCHANGERATES_API_KEY = os.environ.get('OPENEXCHANGERATES_API_KEY')
 
 ACCOUNT_ACTIVATION_DAYS = 3
 
@@ -241,23 +245,25 @@ GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
 PAYMENT_MODEL = 'order.Payment'
 
 PAYMENT_VARIANTS = {
-    'default': ('payments.dummy.DummyProvider', {})
-}
+    'default': ('payments.dummy.DummyProvider', {})}
 
 SESSION_SERIALIZER = 'django.contrib.sessions.serializers.JSONSerializer'
 SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
 
 CHECKOUT_PAYMENT_CHOICES = [
-    ('default', 'Dummy provider')
-]
+    ('default', 'Dummy provider')]
 
 MESSAGE_TAGS = {
-    messages.ERROR: 'danger',
-}
+    messages.ERROR: 'danger'}
 
 LOW_STOCK_THRESHOLD = 10
 
 PAGINATE_BY = 16
+
+BOOTSTRAP3 = {
+    'set_placeholder': False,
+    'set_required': False,
+    'success_css_class': ''}
 
 TEST_RUNNER = ''
 

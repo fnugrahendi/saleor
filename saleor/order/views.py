@@ -11,7 +11,8 @@ from payments import RedirectNeeded
 
 from .forms import PaymentDeleteForm, PaymentMethodsForm
 from .models import Order, Payment
-from .utils import check_order_status, get_ip
+from ..core.utils import get_client_ip
+from .utils import check_order_status
 
 logger = logging.getLogger(__name__)
 
@@ -74,11 +75,11 @@ def start_payment(request, order, variant):
                 'billing_city': billing.city,
                 'billing_postcode': billing.postal_code,
                 'billing_country_code': billing.country,
-                'billing_email': order.get_user_email(),
+                'billing_email': order.user_email,
                 'description': _('Order %(order_number)s') % {
                     'order_number': order},
                 'billing_country_area': billing.country_area,
-                'customer_ip_address': get_ip(request)}
+                'customer_ip_address': get_client_ip(request)}
     variant_choices = settings.CHECKOUT_PAYMENT_CHOICES
     if variant not in [code for code, dummy_name in variant_choices]:
         raise Http404('%r is not a valid payment variant' % (variant,))

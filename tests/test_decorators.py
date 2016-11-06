@@ -2,9 +2,9 @@ import pytest
 from django.contrib.auth.models import AnonymousUser
 from mock import Mock
 
-from .core import get_or_empty_db_cart
-from ..cart import decorators
-from ..cart.models import Cart
+from saleor.cart import decorators
+from saleor.cart.decorators import get_or_empty_db_cart
+from saleor.cart.models import Cart
 
 
 def get_request(django_user_model, cookie_token, authenticated=True):
@@ -71,7 +71,6 @@ def test_find_and_assign_cart(django_user_model):
 def test_find_and_assign_cart_cart_missing(token, django_user_model):
     request = get_request(django_user_model, authenticated=True,
                           cookie_token=token)
-    # import ipdb;ipdb.set_trace()
     decorators.find_and_assign_cart(request, response=Mock())
     assert Cart.objects.filter(user=request.user).exists() is False
 

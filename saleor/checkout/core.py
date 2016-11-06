@@ -192,23 +192,42 @@ class Checkout(object):
         return Address.objects.are_identical(
             self.shipping_address, self.billing_address)
 
-    def _save_address(self, address, is_billing=False, is_shipping=False):
-        if self.user.is_authenticated() and address.id is None:
-            address = User.objects.store_address(
-                self.user, address, shipping=is_shipping, billing=is_billing)
-        elif address.id is None:
-            address.save()
+    def _add_to_user_address_book(self, address, is_billing=False,
+                                  is_shipping=False):
+        if self.user.is_authenticated():
+            User.objects.store_address(
+                self.user, address, shipping=is_shipping,
+                billing=is_billing)
+
+    def _get_address_copy(self, address):
+        address.user = None
+        address.pk = None
+        address.save()
         return address
+
+    def _save_order_billing_address(self):
+        return self._get_address_copy(self.billing_address)
+
+    def _save_order_shipping_address(self):
+        return self._get_address_copy(self.shipping_address)
 
     @transaction.atomic
     def create_order(self):
+        voucher = self._get_voucher(
+            vouchers=Voucher.objects.active().select_for_update())
+        if self.voucher_code is not None and voucher is None:
+            # Voucher expired in meantime, abort order placement
+            return
+
         if self.is_shipping_required:
-            shipping_address = self._save_address(
+            shipping_address = self._save_order_shipping_address()
+            self._add_to_user_address_book(
                 self.shipping_address, is_shipping=True)
         else:
             shipping_address = None
-        billing_address = self._save_address(
-            self.billing_address, is_billing=True)
+        billing_address = self._save_order_billing_address()
+        self._add_to_user_address_book(
+            self.shipping_address, is_billing=True)
 
         order_data = {
             'billing_address': billing_address,
@@ -218,12 +237,11 @@ class Checkout(object):
 
         if self.user.is_authenticated():
             order_data['user'] = self.user
-        else:
-            # TODO: we should always save email in order not only
-            # for anonymous
-            order_data['anonymous_user_email'] = self.email
+            order_data['user_email'] = self.user.email
 
-        voucher = self._get_voucher()
+        else:
+            order_data['user_email'] = self.email
+
         if voucher is not None:
             discount = self.discount
             order_data['voucher'] = voucher
@@ -251,10 +269,11 @@ class Checkout(object):
 
         return order
 
-    def _get_voucher(self):
+    def _get_voucher(self, vouchers=None):
         voucher_code = self.voucher_code
         if voucher_code is not None:
-            vouchers = Voucher.objects.active().select_for_update()
+            if vouchers is None:
+                vouchers = Voucher.objects.active()
             try:
                 return vouchers.get(code=self.voucher_code)
             except Voucher.DoesNotExist:
@@ -306,7 +325,7 @@ def load_checkout(view):
         except KeyError:
             session_data = ''
         tracking_code = analytics.get_client_id(request)
-        
+
         checkout = Checkout.from_storage(
             session_data, cart, request.user, tracking_code)
         response = view(request, checkout, cart)
